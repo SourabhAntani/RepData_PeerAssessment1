@@ -7,19 +7,77 @@ output:
 
 
 ## Loading and preprocessing the data
-
-
+1. Unzip the archive file
+2. Load CSV data.
+3. Create a total number of steps for each day using tapply.
+```{r}
+library(data.table)
+unzip(zipfile = "activity.zip");
+data = read.csv("activity.csv");
+dailySteps = tapply(as.numeric(data$steps), INDEX = data$date, FUN = sum, na.rm = TRUE, simplify =  FALSE);
+intervalSteps = tapply(as.numeric(data$steps), INDEX = data$interval, FUN = mean, na.rm = TRUE, simplify =  FALSE);
+intervalSteps = data.table(as.numeric(as.character(rownames(intervalSteps))), as.numeric(intervalSteps))
+setnames(intervalSteps, colnames(intervalSteps), c('interval','avgSteps'))
+```
 
 ## What is mean total number of steps taken per day?
+Histogram of total number of steps taken per day
+```{r}
+hist(as.numeric(dailySteps), xlab="Number of steps taken in a day", main="Histogram of number of steps taken per day");
+```
 
-
+Mean and Median steps per day.
+```{r}
+cat("Mean total Number of steps per day: ", mean(as.numeric(dailySteps)));
+cat("Median total Number of steps per day: ", median(as.numeric(dailySteps)));
+```
 
 ## What is the average daily activity pattern?
-
-
+Calculate the most active interval (interval with maximum average steps) and the average number of steps. Also plot the daily activity pattern.
+```{r}
+maxStepsPerInterval = max(intervalSteps$avgSteps);
+mostActiveInterval = intervalSteps[intervalSteps$avgSteps == maxStepsPerInterval, interval]
+cat("Maximum average steps (across all days) in an interval:", maxStepsPerInterval)
+cat("Interval with maxiumum number of steps (averaged across all days):", mostActiveInterval)
+plot(intervalSteps, type='l', xlab="Time interval", ylab="Average number of steps in the Interval", main="Average number of steps taken in a 5 Minute interval")
+abline(v = mostActiveInterval, lty=2 )
+axis(1, at=c(mostActiveInterval))
+abline(h = maxStepsPerInterval, lty=2)
+axis(4, at=c(maxStepsPerInterval))
+```
 
 ## Imputing missing values
-
-
+Poluplate the missing values with average value for that interval.
+```{r}
+cat("Number of missing values:", sum(is.na(data$steps)))
+datacopy = data.table(data)
+getAvgIfNa = function(s, i){
+  if(!is.na(s)){
+    s;
+  }else{
+    intervalSteps[intervalSteps$interval == i, avgSteps];
+  }
+};
+datacopy$steps = mapply(getAvgIfNa, datacopy$steps, datacopy$interval)
+dailySteps = tapply(as.numeric(datacopy$steps), INDEX = datacopy$date, FUN = sum, na.rm = TRUE, simplify =  FALSE);
+hist(as.numeric(dailySteps), xlab="Number of steps taken in a day", main="Histogram of number of steps taken per day");
+cat("Mean total Number of steps per day: ", mean(as.numeric(dailySteps)));
+cat("Median total Number of steps per day: ", median(as.numeric(dailySteps)));
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+Comparing weekend and weekday activity patterns.
+```{r}
+datacopy$dayname =  weekdays(as.POSIXlt(datacopy$date));
+intervalStepsWeekend = with(datacopy[dayname == "Saturday" | dayname == "Sunday",], tapply(as.numeric(steps), INDEX = interval, FUN = mean, na.rm = TRUE, simplify =  FALSE));
+intervalStepsWeekday = with(datacopy[dayname == "Monday" | dayname == "Tuesday"  | dayname == "Wednesay" | dayname == "Thursday" | dayname == "Friday",], tapply(as.numeric(steps), INDEX = interval, FUN = mean, na.rm = TRUE, simplify =  FALSE));
+intervalStepsWeekend = cbind(rownames(intervalStepsWeekend), intervalStepsWeekend, "Weekend");
+intervalStepsWeekday = cbind(rownames(intervalStepsWeekday), intervalStepsWeekday, "Weekday");
+intervalSteps = rbind(intervalStepsWeekday, intervalStepsWeekend);
+colnames(intervalSteps)=c("interval", "steps", "dayType")
+intervalSteps = data.table(intervalSteps);
+intervalSteps$interval = unlist(intervalSteps$interval);
+intervalSteps$steps = unlist(intervalSteps$steps);
+intervalSteps$dayType = unlist(intervalSteps$dayType);
+library(ggplot2);
+```
