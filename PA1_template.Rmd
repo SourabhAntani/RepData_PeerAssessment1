@@ -79,5 +79,9 @@ intervalSteps = data.table(intervalSteps);
 intervalSteps$interval = unlist(intervalSteps$interval);
 intervalSteps$steps = unlist(intervalSteps$steps);
 intervalSteps$dayType = unlist(intervalSteps$dayType);
-library(ggplot2);
+par(mfrow = c(2,1))
+with(intervalSteps[dayType == 'Weekday'], plot(interval, steps, type="l", ylab="Weekday Steps"))
+with(intervalSteps[dayType == 'Weekend'], plot(interval, steps, type="l", ylab="Weekend Steps"))
+
+
 ```
